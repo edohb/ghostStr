@@ -1,12 +1,12 @@
 /**
  * @file ghoststr.hpp
  * @brief A C++20 compile-time string obfuscation library
- * 
+ *
  * This library provides compile-time string encryption and obfuscation capabilities
  * to protect string literals from appearing in plain text within compiled binaries.
  * The library uses XOR encryption with position-dependent keys, optional character
  * substitution, and secure memory clearing to provide multiple layers of protection.
- * 
+ *
  * Key features:
  * - Compile-time encryption using consteval functions
  * - Multiple encryption layers (XOR + substitution + final XOR)
@@ -14,7 +14,7 @@
  * - Automatic key generation based on file location and build context
  * - Secure memory clearing after use
  * - RAII-based scoped access to decrypted strings
- * 
+ *
  * @note Requires C++20 for consteval compile-time encryption guarantees
  * @author edohb
  * @version 1.0
@@ -57,7 +57,7 @@
 
 /**
  * @brief Main namespace for the ghoststr string obfuscation library
- * 
+ *
  * Contains all functions, classes, and utilities for compile-time string
  * encryption and obfuscation. The namespace provides a clean separation
  * from user code and prevents naming conflicts.
@@ -272,12 +272,12 @@ namespace ghoststr {
      * @tparam N Size of the string including null terminator
      * @tparam Key1 First encryption key
      * @tparam Key2 Second encryption key
-     * 
+     *
      * This class stores strings in an encrypted form at compile-time and provides
      * secure access methods for runtime decryption. The string is encrypted using
      * multiple layers: XOR encryption, optional character substitution, and final
      * XOR encryption. Memory is securely cleared after use to prevent data recovery.
-     * 
+     *
      * The class provides RAII-based access through scoped_view to ensure automatic
      * cleanup of decrypted data, preventing sensitive strings from remaining in
      * memory longer than necessary.
@@ -294,7 +294,7 @@ namespace ghoststr {
 
         /**
          * @brief RAII wrapper for secure temporary access to decrypted string data
-         * 
+         *
          * Provides safe, temporary access to the decrypted string content. The buffer
          * is automatically and securely cleared when the scoped_view is destroyed,
          * ensuring sensitive data doesn't remain in memory. Cannot be copied or moved
@@ -329,19 +329,19 @@ namespace ghoststr {
              * @return Pointer to null-terminated string data
              */
             const_pointer data() const noexcept { return view.data(); }
-            
+
             /**
              * @brief Gets C-style string pointer
              * @return Pointer to null-terminated string data
              */
             const_pointer c_str() const noexcept { return view.data(); }
-            
+
             /**
              * @brief Gets the length of the string
              * @return Number of characters (excluding null terminator)
              */
             std::size_t size() const noexcept { return view.size(); }
-            
+
             /**
              * @brief Implicit conversion to string_view
              * @return String view of the decrypted data
@@ -351,7 +351,7 @@ namespace ghoststr {
 
         /**
          * @brief Holder for C-style string access with automatic cleanup
-         * 
+         *
          * Combines scoped_view with convenient C-string access. Maintains
          * the decrypted data and provides direct pointer access while ensuring
          * secure cleanup when destroyed.
@@ -366,7 +366,7 @@ namespace ghoststr {
              * @param self Reference to the obfuscated string
              */
             explicit c_str_holder(const obfuscated_string& self)
-                : sv(self.scoped()), ptr(sv.data()), len(sv.size()) {
+                : sv(self), ptr(sv.data()), len(sv.size()) {
             }
 
             c_str_holder(const c_str_holder&) = delete; ///< No copy constructor
@@ -438,7 +438,7 @@ namespace ghoststr {
          * @return Number of characters in the string
          */
         GHOSTSTR_CONSTEVAL size_type size() const noexcept { return N > 0 ? N - 1 : 0; }
-        
+
         /**
          * @brief Gets the length of the string (alias for size())
          * @return Number of characters in the string
@@ -642,74 +642,74 @@ namespace ghoststr {
  * @note This macro generates unique encryption keys based on file path, line number,
  *       index, and compiler counter. Used internally by the public ghostStr macros.
  */
-#define GHOSTSTR_MAKE_WITH_SITE(STR_LIT, IDX)                                                    \
-    (::ghoststr::make_obfuscated_with_keys<                                                      \
-        std::remove_cv_t<std::remove_reference_t<decltype(*(STR_LIT))>>,                         \
-        sizeof(STR_LIT),                                                                         \
-        ::ghoststr::build_key< ::ghoststr::const_hash(__FILE__, sizeof(__FILE__) - 1),           \
-                               __LINE__, (IDX), __COUNTER__ >(),                                 \
-        ::ghoststr::build_key< ::ghoststr::const_hash(__FILE__, sizeof(__FILE__) - 1),           \
-                               __LINE__, (IDX) + 0x42, __COUNTER__ >()                           \
+#define GHOSTSTR_MAKE_WITH_SITE(STR_LIT, IDX)                                                   \
+    (::ghoststr::make_obfuscated_with_keys<                                                     \
+        std::remove_cv_t<std::remove_reference_t<decltype(STR_LIT[0])>>,                        \
+        sizeof(STR_LIT) / sizeof(decltype(STR_LIT[0])),                                         \
+        ::ghoststr::build_key< ::ghoststr::const_hash(__FILE__, sizeof(__FILE__) - 1),          \
+                               __LINE__, (IDX), __COUNTER__ >(),                                \
+        ::ghoststr::build_key< ::ghoststr::const_hash(__FILE__, sizeof(__FILE__) - 1),          \
+                               __LINE__, (IDX) + 0x42, __COUNTER__ >()                          \
     >(STR_LIT))
 
-/**
- * @brief Creates an obfuscated char string with automatic key generation
- * @param str String literal to obfuscate (char)
- * @return obfuscated_string instance
- * @note Primary macro for creating obfuscated strings. Keys are automatically
- *       generated based on source location for maximum security.
- * @example
- * ```cpp
- * auto secret = ghostStr("sensitive data");
- * auto view = secret.scoped();
- * printf("Secret: %s\n", view.c_str());
- * ```
- */
+ /**
+  * @brief Creates an obfuscated char string with automatic key generation
+  * @param str String literal to obfuscate (char)
+  * @return obfuscated_string instance
+  * @note Primary macro for creating obfuscated strings. Keys are automatically
+  *       generated based on source location for maximum security.
+  * @example
+  * ```cpp
+  * auto secret = ghostStr("sensitive data");
+  * auto view = secret.scoped();
+  * printf("Secret: %s\n", view.c_str());
+  * ```
+  */
 #define ghostStr(str)      GHOSTSTR_MAKE_WITH_SITE(str, 0)
 
 /**
  * @brief Creates an obfuscated wide string with automatic key generation
- * @param str String literal to obfuscate (will be prefixed with L)
+ * @param str String literal to obfuscate (wide string)
  * @return obfuscated_string instance for wchar_t
  * @example
  * ```cpp
- * auto secret = ghostStr_w("sensitive data");
+ * auto secret = ghostStr_w(L"sensitive data");
  * ```
  */
-#define ghostStr_w(str)    GHOSTSTR_MAKE_WITH_SITE(L##str, 1)
+#define ghostStr_w(str)    GHOSTSTR_MAKE_WITH_SITE(str, 1)
 
 /**
  * @brief Creates an obfuscated UTF-8 string with automatic key generation
- * @param str String literal to obfuscate (will be prefixed with u8)
+ * @param str String literal to obfuscate (UTF-8 string)
  * @return obfuscated_string instance for char8_t
  * @example
  * ```cpp
- * auto secret = ghostStr_u8("sensitive data");
+ * auto secret = ghostStr_u8(u8"sensitive data");
  * ```
  */
-#define ghostStr_u8(str)   GHOSTSTR_MAKE_WITH_SITE(u8##str, 2)
+#define ghostStr_u8(str)   GHOSTSTR_MAKE_WITH_SITE(str, 2)
 
 /**
  * @brief Creates an obfuscated UTF-16 string with automatic key generation
- * @param str String literal to obfuscate (will be prefixed with u)
+ * @param str String literal to obfuscate (UTF-16 string)
  * @return obfuscated_string instance for char16_t
  * @example
  * ```cpp
- * auto secret = ghostStr_u16("sensitive data");
+ * auto secret = ghostStr_u16(u"sensitive data");
  * ```
  */
-#define ghostStr_u16(str)  GHOSTSTR_MAKE_WITH_SITE(u##str, 3)
+#define ghostStr_u16(str)  GHOSTSTR_MAKE_WITH_SITE(str, 3)
 
 /**
  * @brief Creates an obfuscated UTF-32 string with automatic key generation
- * @param str String literal to obfuscate (will be prefixed with U)
+ * @param str String literal to obfuscate (UTF-32 string)
  * @return obfuscated_string instance for char32_t
  * @example
  * ```cpp
- * auto secret = ghostStr_u32("sensitive data");
+ * auto secret = ghostStr_u32(U"sensitive data");
  * ```
  */
-#define ghostStr_u32(str)  GHOSTSTR_MAKE_WITH_SITE(U##str, 4)
+#define ghostStr_u32(str)  GHOSTSTR_MAKE_WITH_SITE(str, 4)
 
 /**
  * @brief Creates an obfuscated char string with manually specified keys
@@ -728,40 +728,40 @@ namespace ghoststr {
 
 /**
  * @brief Creates an obfuscated wide string with manually specified keys
- * @param str String literal to obfuscate (will be prefixed with L)
+ * @param str String literal to obfuscate
  * @param k1 First encryption key
  * @param k2 Second encryption key
  * @return obfuscated_string instance for wchar_t
  */
 #define ghostStr_key_w(str, k1, k2) \
-    (::ghoststr::obfuscated_string<wchar_t, sizeof(L##str)/sizeof(wchar_t), k1, k2>(L##str))
+    (::ghoststr::obfuscated_string<wchar_t, sizeof(str)/sizeof(wchar_t), k1, k2>(str))
 
 /**
  * @brief Creates an obfuscated UTF-8 string with manually specified keys
- * @param str String literal to obfuscate (will be prefixed with u8)
+ * @param str String literal to obfuscate
  * @param k1 First encryption key
  * @param k2 Second encryption key
  * @return obfuscated_string instance for char8_t
  */
 #define ghostStr_key_u8(str, k1, k2) \
-    (::ghoststr::obfuscated_string<char8_t, sizeof(u8##str)/sizeof(char8_t), k1, k2>(u8##str))
+    (::ghoststr::obfuscated_string<char8_t, sizeof(str)/sizeof(char8_t), k1, k2>(str))
 
 /**
  * @brief Creates an obfuscated UTF-16 string with manually specified keys
- * @param str String literal to obfuscate (will be prefixed with u)
+ * @param str String literal to obfuscate
  * @param k1 First encryption key
  * @param k2 Second encryption key
  * @return obfuscated_string instance for char16_t
  */
 #define ghostStr_key_u16(str, k1, k2) \
-    (::ghoststr::obfuscated_string<char16_t, sizeof(u##str)/sizeof(char16_t), k1, k2>(u##str))
+    (::ghoststr::obfuscated_string<char16_t, sizeof(str)/sizeof(char16_t), k1, k2>(str))
 
 /**
  * @brief Creates an obfuscated UTF-32 string with manually specified keys
- * @param str String literal to obfuscate (will be prefixed with U)
+ * @param str String literal to obfuscate
  * @param k1 First encryption key
  * @param k2 Second encryption key
  * @return obfuscated_string instance for char32_t
  */
 #define ghostStr_key_u32(str, k1, k2) \
-    (::ghoststr::obfuscated_string<char32_t, sizeof(U##str)/sizeof(char32_t), k1, k2>(U##str))
+    (::ghoststr::obfuscated_string<char32_t, sizeof(str)/sizeof(char32_t), k1, k2>(str))
