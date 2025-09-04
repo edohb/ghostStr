@@ -586,7 +586,7 @@ namespace ghoststr {
         static const aes128_params P = [] { return derive_aes_params(K1, K2); }();
         static const std::array<std::uint8_t, 176> RK = aes_key_expand_128(P.key);
         const std::size_t BLK = 16;
-        std::size_t bi = offset_bytes / BLK;x
+        std::size_t bi = offset_bytes / BLK;
         std::array<std::uint8_t, 16> counter_block = P.iv;
         std::uint64_t carry = bi;
         for (int i = 15; i >= 0 && carry; --i) {
